@@ -1,0 +1,11 @@
+{
+  "name": "tasheel-elevator",
+  "private": true,
+  "description": "Run API and Expo app from the repo root",
+  "scripts": {
+    "seed": "npm run seed --prefix backend",
+    "dev:api": "npm run dev --prefix backend",
+    "dev:mobile": "npm start --prefix mobile",
+    "start": "npm start --prefix mobile"
+  }
+}
