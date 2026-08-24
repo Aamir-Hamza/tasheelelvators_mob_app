@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Tasheel",
+    "slug": "tasheel-elevator",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "tasheel",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "om.tasheel.elevator",
+      "infoPlist": {
+        "CFBundleAllowMixedLocalizations": true
+      }
+    },
+    "android": {
+      "package": "om.tasheel.elevator",
+      "adaptiveIcon": {
+        "backgroundColor": "#0e1114",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Tasheel needs photo access to attach fault evidence."
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "supportsRTL": true
+    }
+  }
+}
