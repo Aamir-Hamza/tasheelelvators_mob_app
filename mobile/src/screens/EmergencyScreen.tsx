@@ -44,7 +44,7 @@ export function EmergencyScreen() {
     queryFn: async () => (await api.get('/auth/technicians')).data.data as User[],
     enabled: user?.role === 'admin',
   });
-  const elevators = useElevatorsQuery();
+  const elevators = useElevatorsQuery({ paused: faultOpen });
 
   const assignEmergency = useMutation({
     mutationFn: (technicianId: string) => api.patch(`/emergencies/${assignFor?.id}/assign`, { technicianId }),
@@ -91,6 +91,7 @@ export function EmergencyScreen() {
   };
 
   return (
+    <View style={{ flex: 1 }}>
     <Screen>
       <Text style={[styles.title, { color: theme.text }]}>{t('emergencyCenter')}</Text>
       {emergency.data ? (
@@ -194,13 +195,14 @@ export function EmergencyScreen() {
           else assignFault.mutate(id);
         }}
       />
+    </Screen>
       <CreateFaultModal
         visible={faultOpen}
         onClose={() => setFaultOpen(false)}
         elevators={elevators.data ?? []}
         onSubmit={(payload) => createFault.mutate(payload)}
       />
-    </Screen>
+    </View>
   );
 }
 

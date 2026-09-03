@@ -6,10 +6,8 @@ import { User, IUser } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { nextPrefixedId } from '../utils/ids';
 
-function customerFilter(user: IUser) {
-  if (user.role !== 'customer') return {};
-  const company = user.company || user.name;
-  return { customerName: company };
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function isObjectId(id: string) {
@@ -24,17 +22,19 @@ async function findElevatorDoc(id: string) {
   return Elevator.findOne({ liftId: String(id).toUpperCase() });
 }
 
-export async function listElevators(user: IUser) {
-  return Elevator.find(customerFilter(user)).sort({ liftId: 1 }).lean().read('primary');
+export async function listElevators(_user: IUser, q?: string) {
+  const filter: Record<string, unknown> = {};
+  const term = q?.trim();
+  if (term) {
+    const rx = new RegExp(escapeRegex(term), 'i');
+    filter.$or = [{ liftId: rx }, { building: rx }, { location: rx }, { customerName: rx }];
+  }
+  return Elevator.find(filter).sort({ liftId: 1 }).lean().read('primary');
 }
 
-export async function getElevator(id: string, user: IUser) {
+export async function getElevator(id: string, _user: IUser) {
   const elevator = await findElevatorDoc(id);
   if (!elevator) throw new AppError('Elevator not found', 404);
-  if (user.role === 'customer') {
-    const company = user.company || user.name;
-    if (elevator.customerName !== company) throw new AppError('Forbidden', 403);
-  }
   return elevator;
 }
 
@@ -74,9 +74,8 @@ export async function deleteElevator(id: string) {
   return elevator;
 }
 
-export async function fleetStats(user: IUser) {
-  const filter = customerFilter(user);
-  const elevators = await Elevator.find(filter);
+export async function fleetStats(_user: IUser) {
+  const elevators = await Elevator.find();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date();

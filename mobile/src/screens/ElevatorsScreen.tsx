@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../components/Screen';
 import { ElevatorCard } from '../components/ElevatorCard';
 import { AddElevatorModal } from '../components/AddElevatorModal';
+import { CreateFaultModal } from '../components/CreateFaultModal';
+import { SearchField } from '../components/SearchField';
 import { api } from '../services/api';
 import { dropElevatorFromCache, queryClient } from '../services/queryClient';
 import { useElevatorsQuery } from '../services/useElevatorsQuery';
@@ -16,6 +18,7 @@ import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { RootStackParamList } from '../navigation/types';
+import { matchesElevatorSearch } from '../utils/format';
 
 export function ElevatorsScreen() {
   const { user } = useAuth();
@@ -24,8 +27,12 @@ export function ElevatorsScreen() {
   const toast = useToast();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [open, setOpen] = useState(false);
+  const [faultOpen, setFaultOpen] = useState(false);
+  const [reportId, setReportId] = useState<string | undefined>();
+  const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Elevator | null>(null);
-  const query = useElevatorsQuery();
+  const [pulling, setPulling] = useState(false);
+  const query = useElevatorsQuery({ paused: faultOpen });
 
   useFocusEffect(
     useCallback(() => {
@@ -72,6 +79,19 @@ export function ElevatorsScreen() {
     },
   });
 
+  const createFault = useMutation({
+    mutationFn: (payload: Record<string, unknown>) => api.post('/faults', payload),
+    onSuccess: () => {
+      setFaultOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ['faults'] });
+      toast.show(t('reportSubmitted'), 'success');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed';
+      toast.show(msg, 'error');
+    },
+  });
+
   if (query.isLoading && !query.data) {
     return (
       <Screen scroll={false}>
@@ -81,13 +101,27 @@ export function ElevatorsScreen() {
   }
 
   const elevators = query.data ?? [];
+  const filtered = elevators.filter((el) => matchesElevatorSearch(el, search));
 
   return (
-    <Screen refreshing={query.isRefetching} onRefresh={() => query.refetch()}>
+    <View style={{ flex: 1 }}>
+    <Screen
+      refreshing={pulling}
+      onRefresh={async () => {
+        setPulling(true);
+        try {
+          await query.refetch();
+        } finally {
+          setPulling(false);
+        }
+      }}
+    >
       <View style={styles.head}>
         <View>
           <Text style={[styles.title, { color: theme.text }]}>{t('registry')}</Text>
-          <Text style={{ color: theme.muted, fontWeight: '700' }}>{elevators.length} {t('elevators')}</Text>
+          <Text style={{ color: theme.muted, fontWeight: '700' }}>
+            {filtered.length} {t('elevators')}
+          </Text>
         </View>
         {user?.role === 'admin' ? (
           <Pressable
@@ -100,17 +134,31 @@ export function ElevatorsScreen() {
             <Ionicons name="add" size={18} color="#fff" />
             <Text style={styles.addText}>{t('addElevator')}</Text>
           </Pressable>
+        ) : user?.role === 'customer' ? (
+          <Pressable onPress={() => setFaultOpen(true)} style={[styles.add, { backgroundColor: theme.accent }]}>
+            <Ionicons name="warning-outline" size={16} color="#fff" />
+            <Text style={styles.addText}>{t('reportProblem')}</Text>
+          </Pressable>
         ) : null}
       </View>
-      {elevators.length === 0 ? (
-        <Text style={{ color: theme.muted }}>{t('noData')}</Text>
+      <SearchField value={search} onChangeText={setSearch} placeholder={t('searchPlaceholder')} />
+      {filtered.length === 0 ? (
+        <Text style={{ color: theme.muted }}>{search ? t('noMatchingElevators') : t('noData')}</Text>
       ) : (
-        elevators.map((el) => (
+        filtered.map((el) => (
           <ElevatorCard
             key={el._id}
             elevator={el}
             onPress={() => navigation.navigate('ElevatorDetail', { id: el._id })}
             onDelete={user?.role === 'admin' ? () => remove.mutate(el._id) : undefined}
+            onReport={
+              user?.role === 'customer'
+                ? () => {
+                    setReportId(el._id);
+                    setFaultOpen(true);
+                  }
+                : undefined
+            }
           />
         ))
       )}
@@ -124,6 +172,14 @@ export function ElevatorsScreen() {
         onSubmit={(payload) => save.mutate(payload)}
       />
     </Screen>
+      <CreateFaultModal
+        visible={faultOpen}
+        onClose={() => setFaultOpen(false)}
+        elevators={elevators}
+        initialElevatorId={reportId}
+        onSubmit={(payload) => createFault.mutate(payload)}
+      />
+    </View>
   );
 }
 

@@ -37,6 +37,19 @@ export function formatWhen(iso: string) {
   return d.toLocaleString();
 }
 
+export function matchesElevatorSearch(
+  elevator: { liftId?: string; building?: string; location?: string; customerName?: string },
+  q: string
+) {
+  const term = q.trim().toLowerCase();
+  if (!term) return true;
+  const hay = [elevator.liftId, elevator.building, elevator.location, elevator.customerName]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(term);
+}
+
 export function liftRef(value: unknown): { liftId?: string; building?: string; _id?: string } {
   if (value && typeof value === 'object') return value as { liftId?: string; building?: string; _id?: string };
   return {};

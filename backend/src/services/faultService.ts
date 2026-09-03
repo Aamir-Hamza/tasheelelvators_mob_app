@@ -4,6 +4,7 @@ import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { nextPrefixedId } from '../utils/ids';
 import { IUser } from '../models/User';
+import { notifyRoles } from './notificationService';
 
 const populate = [
   { path: 'elevatorId', select: 'liftId customerName building location status' },
@@ -13,7 +14,9 @@ const populate = [
 
 function scopedQuery(user: IUser) {
   if (user.role === 'technician') {
-    return { assignedTechId: user._id };
+    return {
+      $or: [{ assignedTechId: user._id }, { assignedTechId: { $exists: false } }, { assignedTechId: null }],
+    };
   }
   return {};
 }
@@ -24,8 +27,7 @@ export async function listFaults(user: IUser, filters: { priority?: FaultPriorit
   if (filters.status) query.status = filters.status;
 
   if (user.role === 'customer') {
-    const elevators = await Elevator.find({ customerName: user.company || user.name }).select('_id');
-    query.elevatorId = { $in: elevators.map((e) => e._id) };
+    query.reportedBy = user._id;
   }
 
   return FaultTicket.find(query).populate(populate).sort({ reportedAt: -1 });
@@ -49,6 +51,9 @@ export async function createFault(
 ) {
   const elevator = await Elevator.findById(input.elevatorId);
   if (!elevator) throw new AppError('Elevator not found', 404);
+  if (!input.faultType?.trim() || !input.description?.trim()) {
+    throw new AppError('Fault type and description are required');
+  }
 
   const ids = (await FaultTicket.find().select('ticketId')).map((t) => t.ticketId);
   const ticket = await FaultTicket.create({
@@ -67,6 +72,16 @@ export async function createFault(
     elevator.healthScore = Math.min(elevator.healthScore, input.priority === 'Critical' ? 35 : 68);
     await elevator.save();
   }
+
+  const reporter = user.company ? `${user.name} (${user.company})` : user.name;
+  await notifyRoles(['admin', 'technician'], {
+    title: `Elevator problem · ${elevator.liftId}`,
+    body: `${reporter} reported ${input.faultType} at ${elevator.building} (${elevator.location}). ${input.description}`,
+    kind: 'fault',
+    elevatorId: elevator._id,
+    ticketId: ticket.ticketId,
+    excludeUserId: user._id,
+  });
 
   return ticket.populate(populate);
 }

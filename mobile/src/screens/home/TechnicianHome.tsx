@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../components/Screen';
 import { EmergencyBanner } from '../../components/EmergencyBanner';
+import { NotificationFeed } from '../../components/NotificationFeed';
 import { api } from '../../services/api';
 import { EmergencyEvent, FaultTicket, MaintenanceJob } from '../../services/types';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +35,7 @@ export function TechnicianHome() {
   const faults = useQuery({
     queryKey: ['faults'],
     queryFn: async () => (await api.get('/faults')).data.data as FaultTicket[],
+    refetchInterval: 4000,
   });
 
   const startEmergency = useMutation({
@@ -52,6 +54,13 @@ export function TechnicianHome() {
       navigation.navigate('Checklist', { id });
     },
   });
+  const acceptFault = useMutation({
+    mutationFn: (id: string) => api.patch(`/faults/${id}/status`, { status: 'In-Progress' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['faults'] });
+      toast.show(t('jobStarted'), 'success');
+    },
+  });
 
   const activeJobs = (jobs.data ?? []).filter((j) => j.status !== 'completed');
 
@@ -60,6 +69,8 @@ export function TechnicianHome() {
       <Text style={[styles.kicker, { color: theme.accent }]}>{t('roleTechnician')}</Text>
       <Text style={[styles.hello, { color: theme.text }]}>{user?.name}</Text>
       <Text style={[styles.sub, { color: theme.muted }]}>{t('assignedToYou')}</Text>
+
+      <NotificationFeed />
 
       {emergency.data ? (
         <EmergencyBanner
@@ -98,17 +109,29 @@ export function TechnicianHome() {
         </Pressable>
       ))}
 
-      <Text style={[styles.section, { color: theme.text }]}>{t('tickets')}</Text>
-      {(faults.data ?? []).map((f) => (
-        <View key={f._id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={{ color: theme.text, fontWeight: '800' }}>
-            {f.ticketId} · {f.priority}
-          </Text>
-          <Text style={{ color: theme.muted }}>
-            {liftRef(f.elevatorId).liftId} · {f.faultType}
-          </Text>
-        </View>
-      ))}
+      <Text style={[styles.section, { color: theme.text }]}>{t('newFromUsers')}</Text>
+      {(faults.data ?? []).length === 0 ? (
+        <Text style={{ color: theme.muted }}>{t('noData')}</Text>
+      ) : (
+        (faults.data ?? []).map((f) => (
+          <View key={f._id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={{ color: theme.text, fontWeight: '800' }}>
+              {f.ticketId} · {f.priority} · {f.status}
+            </Text>
+            <Text style={{ color: theme.muted }}>
+              {liftRef(f.elevatorId).liftId} · {f.faultType}
+            </Text>
+            {f.status === 'Open' ? (
+              <Pressable
+                onPress={() => acceptFault.mutate(f._id)}
+                style={[styles.start, { backgroundColor: theme.accent }]}
+              >
+                <Text style={styles.startText}>{t('acceptTicket')}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ))
+      )}
     </Screen>
   );
 }

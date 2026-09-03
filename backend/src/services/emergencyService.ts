@@ -4,6 +4,7 @@ import { User } from '../models/User';
 import { AppError } from '../utils/AppError';
 import { nextPrefixedId } from '../utils/ids';
 import { IUser } from '../models/User';
+import { notifyRoles } from './notificationService';
 
 const populate = [
   { path: 'elevatorId', select: 'liftId customerName building location status healthScore' },
@@ -12,21 +13,19 @@ const populate = [
 
 export async function listEmergencies(user: IUser) {
   const query: Record<string, unknown> = {};
-  if (user.role === 'technician') query.assignedTechId = user._id;
-  if (user.role === 'customer') {
-    const elevators = await Elevator.find({ customerName: user.company || user.name }).select('_id');
-    query.elevatorId = { $in: elevators.map((e) => e._id) };
+  if (user.role === 'technician') {
+    query.$or = [{ assignedTechId: user._id }, { assignedTechId: { $exists: false } }, { assignedTechId: null }];
   }
+  if (user.role === 'customer') query.reportedBy = user._id;
   return EmergencyEvent.find(query).populate(populate).sort({ slaStartTime: -1 });
 }
 
 export async function getActiveEmergency(user: IUser) {
   const query: Record<string, unknown> = { status: { $ne: 'resolved' } };
-  if (user.role === 'technician') query.assignedTechId = user._id;
-  if (user.role === 'customer') {
-    const elevators = await Elevator.find({ customerName: user.company || user.name }).select('_id');
-    query.elevatorId = { $in: elevators.map((e) => e._id) };
+  if (user.role === 'technician') {
+    query.$or = [{ assignedTechId: user._id }, { assignedTechId: { $exists: false } }, { assignedTechId: null }];
   }
+  if (user.role === 'customer') query.reportedBy = user._id;
   return EmergencyEvent.findOne(query).sort({ slaStartTime: -1 }).populate(populate);
 }
 
@@ -36,9 +35,6 @@ export async function createEmergency(
 ) {
   const elevator = await Elevator.findById(input.elevatorId);
   if (!elevator) throw new AppError('Elevator not found', 404);
-  if (user.role === 'customer' && elevator.customerName !== (user.company || user.name)) {
-    throw new AppError('Forbidden', 403);
-  }
 
   const ids = (await EmergencyEvent.find().select('emergencyId')).map((e) => e.emergencyId);
   const now = new Date();
@@ -51,6 +47,7 @@ export async function createEmergency(
     status: 'active',
     slaStartTime: now,
     slaMinutes: 15,
+    reportedBy: user._id,
     timeline: [
       { event: 'SOS received', timestamp: now, note: `Triggered by ${user.name}` },
       { event: 'Dispatcher notified', timestamp: now, note: 'Fleet command alert pushed' },
@@ -63,6 +60,16 @@ export async function createEmergency(
   elevator.telemetry.doorStatus = 'CLOSED';
   elevator.telemetry.updatedAt = now;
   await elevator.save();
+
+  const reporter = user.company ? `${user.name} (${user.company})` : user.name;
+  await notifyRoles(['admin', 'technician'], {
+    title: `SOS · ${elevator.liftId}`,
+    body: `${reporter} triggered SOS on floor ${input.floor} at ${elevator.building}. ${input.description}`,
+    kind: 'emergency',
+    elevatorId: elevator._id,
+    ticketId: emergency.emergencyId,
+    excludeUserId: user._id,
+  });
 
   return emergency.populate(populate);
 }

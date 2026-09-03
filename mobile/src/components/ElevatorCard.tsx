@@ -11,10 +11,14 @@ export function ElevatorCard({
   elevator,
   onPress,
   onDelete,
+  onReport,
+  selected,
 }: {
   elevator: Elevator;
   onPress?: () => void;
   onDelete?: () => void;
+  onReport?: () => void;
+  selected?: boolean;
 }) {
   const { theme } = useTheme();
   const { t } = useI18n();
@@ -22,7 +26,14 @@ export function ElevatorCard({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
+      style={[
+        styles.card,
+        {
+          backgroundColor: theme.card,
+          borderColor: selected ? theme.accent : theme.border,
+          borderWidth: selected ? 2 : 1,
+        },
+      ]}
     >
       <View style={styles.row}>
         <View style={[styles.icon, { backgroundColor: `${healthColor(elevator.healthScore)}22` }]}>
@@ -38,6 +49,15 @@ export function ElevatorCard({
             {elevator.location} · {elevator.controllerType} · {elevator.stops} {t('stops').toLowerCase()}
           </Text>
         </View>
+        {onReport ? (
+          <Pressable
+            hitSlop={10}
+            onPress={onReport}
+            style={[styles.trash, { borderColor: theme.accent }]}
+          >
+            <Ionicons name="warning-outline" size={18} color={theme.accent} />
+          </Pressable>
+        ) : null}
         {onDelete ? (
           <Pressable
             hitSlop={10}

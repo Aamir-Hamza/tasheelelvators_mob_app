@@ -16,6 +16,7 @@ import { ElevatorDetailScreen } from '../screens/ElevatorDetailScreen';
 import { TelemetryScreen } from '../screens/TelemetryScreen';
 import { ChecklistScreen } from '../screens/ChecklistScreen';
 import { RootStackParamList, TabParamList } from './types';
+import { NotificationsProvider, useNotifications } from '../context/NotificationsContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -23,6 +24,9 @@ const Tab = createBottomTabNavigator<TabParamList>();
 function Tabs() {
   const { t } = useI18n();
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const { unread } = useNotifications();
+  const staff = user?.role === 'admin' || user?.role === 'technician';
 
   return (
     <Tab.Navigator
@@ -50,7 +54,14 @@ function Tabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: t('home') }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: t('home'),
+          tabBarBadge: staff && unread ? unread : undefined,
+        }}
+      />
       <Tab.Screen name="Elevators" component={ElevatorsScreen} options={{ tabBarLabel: t('elevators') }} />
       <Tab.Screen name="Emergency" component={EmergencyScreen} options={{ tabBarLabel: t('emergency') }} />
       <Tab.Screen name="Maintenance" component={MaintenanceScreen} options={{ tabBarLabel: t('maintenance') }} />
@@ -83,7 +94,7 @@ export function RootNavigator() {
     >
       {user ? (
         <>
-          <Stack.Screen name="Main" component={Tabs} options={{ headerShown: false }} />
+          <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
           <Stack.Screen name="ElevatorDetail" component={ElevatorDetailScreen} options={{ title: t('elevators') }} />
           <Stack.Screen name="Telemetry" component={TelemetryScreen} options={{ title: t('telemetry') }} />
           <Stack.Screen name="Checklist" component={ChecklistScreen} options={{ title: t('checklist') }} />
@@ -92,5 +103,13 @@ export function RootNavigator() {
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
       )}
     </Stack.Navigator>
+  );
+}
+
+function MainTabs() {
+  return (
+    <NotificationsProvider>
+      <Tabs />
+    </NotificationsProvider>
   );
 }

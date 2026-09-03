@@ -9,16 +9,22 @@ import elevatorRoutes from './routes/elevators';
 import faultRoutes from './routes/faults';
 import emergencyRoutes from './routes/emergencies';
 import maintenanceRoutes from './routes/maintenance';
+import notificationRoutes from './routes/notifications';
 import { errorHandler, notFound } from './middlewares/errorHandler';
 
 async function bootstrap() {
   await connectDb();
 
   const app = express();
-  app.use(helmet());
-  app.use(cors({ origin: env.clientOrigin === '*' ? true : env.clientOrigin }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginOpenerPolicy: false,
+    })
+  );
+  app.use(cors({ origin: true }));
   app.use(morgan('dev'));
-  app.use(express.json({ limit: '8mb' }));
+  app.use(express.json({ limit: '20mb' }));
   app.set('etag', false);
   app.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -48,6 +54,7 @@ async function bootstrap() {
   app.use('/api/faults', faultRoutes);
   app.use('/api/emergencies', emergencyRoutes);
   app.use('/api/maintenance', maintenanceRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   app.use(notFound);
   app.use(errorHandler);

@@ -15,6 +15,35 @@ export async function login(req: AuthRequest, res: Response, next: NextFunction)
   }
 }
 
+export async function registerUser(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { name, email, password, phone, company } = req.body as {
+      name: string;
+      email: string;
+      password: string;
+      phone: string;
+      company?: string;
+    };
+    if (!name || !email || !password || !phone) {
+      throw new AppError('Missing required fields');
+    }
+    if (String(password).length < 6) {
+      throw new AppError('Password must be at least 6 characters');
+    }
+    const result = await authService.register({
+      name,
+      email,
+      password,
+      role: 'customer',
+      phone,
+      company,
+    });
+    res.status(201).json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function register(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const { name, email, password, role, phone, company } = req.body as {
@@ -56,6 +85,17 @@ export async function technicians(_req: AuthRequest, res: Response, next: NextFu
 export async function users(_req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const data = await authService.listUsers();
+    res.json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function savePushToken(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const { token, platform, type } = req.body as { token?: string; platform?: string; type?: string };
+    if (!token) throw new AppError('Push token required');
+    const data = await authService.savePushToken(String(req.user!._id), { token, platform, type });
     res.json({ success: true, data });
   } catch (err) {
     next(err);

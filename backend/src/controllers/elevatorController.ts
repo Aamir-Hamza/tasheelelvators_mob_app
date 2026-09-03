@@ -4,7 +4,7 @@ import * as elevatorService from '../services/elevatorService';
 
 export async function list(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const data = await elevatorService.listElevators(req.user!);
+    const data = await elevatorService.listElevators(req.user!, typeof req.query.q === 'string' ? req.query.q : undefined);
     res.json({ success: true, data });
   } catch (err) {
     next(err);

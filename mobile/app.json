@@ -16,6 +16,7 @@
     },
     "android": {
       "package": "om.tasheel.elevator",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#0e1114",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,15 +26,24 @@
       "predictiveBackGestureEnabled": false,
       "usesCleartextTraffic": true,
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "READ_MEDIA_IMAGES"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#f97316",
+          "defaultChannel": "default"
+        }
+      ],
       "expo-secure-store",
       [
         "expo-image-picker",
@@ -44,7 +54,10 @@
       "expo-font"
     ],
     "extra": {
-      "supportsRTL": true
+      "supportsRTL": true,
+      "eas": {
+        "projectId": "e1ff9336-be26-462d-80e2-892bbcddde62"
+      }
     }
   }
 }

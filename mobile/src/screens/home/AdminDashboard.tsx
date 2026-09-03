@@ -9,6 +9,7 @@ import { HealthScoreCircle } from '../../components/HealthScoreCircle';
 import { ElevatorCard } from '../../components/ElevatorCard';
 import { useElevatorsQuery } from '../../services/useElevatorsQuery';
 import { EmergencyBanner } from '../../components/EmergencyBanner';
+import { NotificationFeed } from '../../components/NotificationFeed';
 import { api } from '../../services/api';
 import { dropElevatorFromCache, queryClient } from '../../services/queryClient';
 import { EmergencyEvent, FaultTicket, FleetStats } from '../../services/types';
@@ -38,6 +39,7 @@ export function AdminDashboard() {
   const faults = useQuery({
     queryKey: ['faults'],
     queryFn: async () => (await api.get('/faults')).data.data as FaultTicket[],
+    refetchInterval: 4000,
   });
 
   useFocusEffect(
@@ -63,6 +65,8 @@ export function AdminDashboard() {
       <Text style={[styles.kicker, { color: theme.accent }]}>{t('appName')}</Text>
       <Text style={[styles.hello, { color: theme.text }]}>{user?.name}</Text>
       <Text style={[styles.role, { color: theme.muted }]}>{t('roleAdmin')}</Text>
+
+      <NotificationFeed />
 
       {emergency.data ? (
         <EmergencyBanner

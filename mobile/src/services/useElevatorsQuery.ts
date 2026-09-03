@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import { Elevator } from './types';
 
-export function useElevatorsQuery() {
+export function useElevatorsQuery(options?: { paused?: boolean }) {
   return useQuery({
     queryKey: ['elevators'],
     queryFn: async () => {
@@ -10,7 +10,7 @@ export function useElevatorsQuery() {
       const rows = res.data?.data;
       return Array.isArray(rows) ? (rows as Elevator[]) : [];
     },
-    refetchInterval: 3000,
+    refetchInterval: options?.paused ? false : 3000,
     structuralSharing: false,
   });
 }

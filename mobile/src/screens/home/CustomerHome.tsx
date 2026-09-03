@@ -1,53 +1,62 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Screen } from '../../components/Screen';
 import { ElevatorCard } from '../../components/ElevatorCard';
 import { CreateFaultModal } from '../../components/CreateFaultModal';
+import { SearchField } from '../../components/SearchField';
 import { api } from '../../services/api';
 import { queryClient } from '../../services/queryClient';
 import { useElevatorsQuery } from '../../services/useElevatorsQuery';
-import { MaintenanceJob } from '../../services/types';
+import { FaultTicket, MaintenanceJob } from '../../services/types';
 import { useAuth } from '../../context/AuthContext';
 import { useI18n } from '../../context/I18nContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { useToast } from '../../context/ToastContext';
-import { RootStackParamList } from '../../navigation/types';
-import { liftRef } from '../../utils/format';
+import { liftRef, matchesElevatorSearch } from '../../utils/format';
 
 export function CustomerHome() {
   const { user } = useAuth();
   const { t } = useI18n();
   const { theme } = useTheme();
   const toast = useToast();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [faultOpen, setFaultOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState('');
   const [floor, setFloor] = useState('G');
+  const [pulling, setPulling] = useState(false);
 
-  const elevators = useElevatorsQuery();
+  const elevators = useElevatorsQuery({ paused: faultOpen });
   const jobs = useQuery({
     queryKey: ['maintenance'],
     queryFn: async () => (await api.get('/maintenance')).data.data as MaintenanceJob[],
+  });
+  const reports = useQuery({
+    queryKey: ['faults'],
+    queryFn: async () => (await api.get('/faults')).data.data as FaultTicket[],
   });
 
   useFocusEffect(
     useCallback(() => {
       void queryClient.invalidateQueries({ queryKey: ['elevators'] });
       void queryClient.invalidateQueries({ queryKey: ['maintenance'] });
+      void queryClient.invalidateQueries({ queryKey: ['faults'] });
     }, [])
   );
 
+  const list = elevators.data ?? [];
+  const filtered = useMemo(() => list.filter((el) => matchesElevatorSearch(el, search)), [list, search]);
+  const selected = list.find((el) => el._id === selectedId) ?? filtered[0] ?? list[0];
+
   const sos = useMutation({
     mutationFn: async () => {
-      const first = elevators.data?.[0];
-      if (!first) throw new Error('No elevator');
+      if (!selected) throw new Error('No elevator');
       return api.post('/emergencies', {
-        elevatorId: first._id,
+        elevatorId: selected._id,
         floor,
-        description: `Passenger SOS from ${first.liftId} (${first.building})`,
+        description: `Passenger SOS from ${selected.liftId} (${selected.building})`,
       });
     },
     onSuccess: () => {
@@ -66,20 +75,41 @@ export function CustomerHome() {
     onSuccess: () => {
       setFaultOpen(false);
       void queryClient.invalidateQueries({ queryKey: ['faults'] });
+      void queryClient.invalidateQueries({ queryKey: ['elevators'] });
       toast.show(t('reportSubmitted'), 'success');
+    },
+    onError: (err: unknown) => {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed';
+      toast.show(msg, 'error');
     },
   });
 
   const upcoming = (jobs.data ?? []).filter((j) => j.status !== 'completed');
 
   return (
-    <Screen refreshing={elevators.isRefetching} onRefresh={() => elevators.refetch()}>
-      <Text style={[styles.kicker, { color: theme.accent }]}>{user?.company}</Text>
+    <View style={{ flex: 1 }}>
+    <Screen
+      refreshing={pulling}
+      onRefresh={async () => {
+        setPulling(true);
+        try {
+          await elevators.refetch();
+        } finally {
+          setPulling(false);
+        }
+      }}
+    >
+      <Text style={[styles.kicker, { color: theme.accent }]}>{user?.company || t('roleCustomer')}</Text>
       <Text style={[styles.hello, { color: theme.text }]}>{t('contractedLifts')}</Text>
+      <Text style={{ color: theme.muted, marginBottom: 12 }}>{t('tapToSelect')}</Text>
+
+      <SearchField value={search} onChangeText={setSearch} placeholder={t('searchPlaceholder')} />
 
       <View style={[styles.sosCard, { backgroundColor: theme.alert }]}>
         <Text style={styles.sosTitle}>{t('sos')}</Text>
-        <Text style={styles.sosHint}>{t('sosHint')}</Text>
+        <Text style={styles.sosHint}>
+          {selected ? `${t('selectedLift')}: ${selected.liftId} · ${selected.building}` : t('sosHint')}
+        </Text>
         <TextInput
           value={floor}
           onChangeText={setFloor}
@@ -90,6 +120,10 @@ export function CustomerHome() {
         <Pressable
           style={styles.sosBtn}
           onPress={() => {
+            if (!selected) {
+              toast.show(t('selectElevator'), 'error');
+              return;
+            }
             Alert.alert(t('confirmSos'), t('confirmSosBody'), [
               { text: t('cancel'), style: 'cancel' },
               {
@@ -107,17 +141,46 @@ export function CustomerHome() {
         </Pressable>
       </View>
 
-      <Pressable onPress={() => setFaultOpen(true)} style={[styles.report, { borderColor: theme.accent }]}>
-        <Text style={{ color: theme.accent, fontWeight: '800' }}>{t('reportFault')}</Text>
+      <Pressable
+        onPress={() => setFaultOpen(true)}
+        hitSlop={8}
+        style={[styles.report, { borderColor: theme.accent, backgroundColor: theme.card }]}
+      >
+        <Text style={{ color: theme.accent, fontWeight: '800' }}>{t('reportProblem')}</Text>
       </Pressable>
 
-      {(elevators.data ?? []).map((el) => (
-        <ElevatorCard
-          key={el._id}
-          elevator={el}
-          onPress={() => navigation.navigate('ElevatorDetail', { id: el._id })}
-        />
-      ))}
+      {filtered.length === 0 ? (
+        <Text style={{ color: theme.muted, marginBottom: 12 }}>{t('noMatchingElevators')}</Text>
+      ) : (
+        filtered.map((el) => (
+          <ElevatorCard
+            key={el._id}
+            elevator={el}
+            selected={selected?._id === el._id}
+            onPress={() => setSelectedId(el._id)}
+            onReport={() => {
+              setSelectedId(el._id);
+              setFaultOpen(true);
+            }}
+          />
+        ))
+      )}
+
+      <Text style={[styles.section, { color: theme.text }]}>{t('yourReports')}</Text>
+      {(reports.data ?? []).length === 0 ? (
+        <Text style={{ color: theme.muted }}>{t('noData')}</Text>
+      ) : (
+        (reports.data ?? []).slice(0, 6).map((f) => (
+          <View key={f._id} style={[styles.job, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Text style={{ color: theme.text, fontWeight: '800' }}>
+              {f.ticketId} · {liftRef(f.elevatorId).liftId}
+            </Text>
+            <Text style={{ color: theme.muted }}>
+              {f.faultType} · {f.status}
+            </Text>
+          </View>
+        ))
+      )}
 
       <Text style={[styles.section, { color: theme.text }]}>{t('upcomingPm')}</Text>
       {upcoming.length === 0 ? (
@@ -132,20 +195,21 @@ export function CustomerHome() {
           </View>
         ))
       )}
-
+    </Screen>
       <CreateFaultModal
         visible={faultOpen}
         onClose={() => setFaultOpen(false)}
-        elevators={elevators.data ?? []}
+        elevators={list}
+        initialElevatorId={selected?._id}
         onSubmit={(payload) => createFault.mutate(payload)}
       />
-    </Screen>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   kicker: { fontWeight: '900', letterSpacing: 1 },
-  hello: { fontSize: 22, fontWeight: '800', marginBottom: 14 },
+  hello: { fontSize: 22, fontWeight: '800', marginBottom: 6 },
   sosCard: { borderRadius: 16, padding: 16, marginBottom: 12 },
   sosTitle: { color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: 1 },
   sosHint: { color: '#ffd7d0', marginTop: 4, marginBottom: 10 },

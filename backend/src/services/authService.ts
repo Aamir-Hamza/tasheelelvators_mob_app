@@ -67,3 +67,30 @@ export async function listUsers() {
   const users = await User.find().select('name email phone role company activeJobs');
   return users.map(publicUser);
 }
+
+export async function savePushToken(
+  userId: string,
+  input: { token: string; platform?: string; type?: string }
+) {
+  const token = String(input.token || '').trim();
+  if (!token) throw new AppError('Push token required');
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', 404);
+
+  const existing = user.pushTokens?.find((item) => item.token === token);
+  if (existing) {
+    existing.platform = input.platform || existing.platform;
+    existing.type = input.type || existing.type;
+    existing.updatedAt = new Date();
+  } else {
+    user.pushTokens = user.pushTokens || [];
+    user.pushTokens.push({
+      token,
+      platform: input.platform,
+      type: input.type,
+      updatedAt: new Date(),
+    });
+  }
+  await user.save();
+  return { saved: true };
+}

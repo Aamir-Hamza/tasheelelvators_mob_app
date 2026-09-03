@@ -18,6 +18,7 @@ export interface IEmergencyEvent extends Document {
   slaStartTime: Date;
   slaMinutes: number;
   assignedTechId?: Types.ObjectId;
+  reportedBy?: Types.ObjectId;
   timeline: ITimelineItem[];
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +49,7 @@ const emergencySchema = new Schema<IEmergencyEvent>(
     slaStartTime: { type: Date, default: Date.now },
     slaMinutes: { type: Number, default: 15 },
     assignedTechId: { type: Schema.Types.ObjectId, ref: 'User' },
+    reportedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     timeline: { type: [timelineSchema], default: [] },
   },
   { timestamps: true }

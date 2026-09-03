@@ -10,6 +10,12 @@ export interface IUser extends Document {
   phone: string;
   company?: string;
   activeJobs: Types.ObjectId[];
+  pushTokens: {
+    token: string;
+    platform?: string;
+    type?: string;
+    updatedAt: Date;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +29,18 @@ const userSchema = new Schema<IUser>(
     phone: { type: String, required: true, trim: true },
     company: { type: String, trim: true },
     activeJobs: [{ type: Schema.Types.ObjectId, ref: 'MaintenanceJob' }],
+    pushTokens: {
+      type: [
+        {
+          token: { type: String, required: true, trim: true },
+          platform: { type: String, trim: true },
+          type: { type: String, trim: true },
+          updatedAt: { type: Date, default: Date.now },
+          _id: false,
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

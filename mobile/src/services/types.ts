@@ -124,3 +124,14 @@ export interface ComplianceStats {
   scheduled: number;
   complianceRate: number;
 }
+
+export interface AppNotification {
+  _id: string;
+  title: string;
+  body: string;
+  kind: 'fault' | 'emergency';
+  ticketId?: string;
+  read: boolean;
+  createdAt: string;
+  elevatorId?: RefElevator | string;
+}
