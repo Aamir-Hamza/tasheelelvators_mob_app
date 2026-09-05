@@ -36,8 +36,9 @@ async function sendChunk(
     const text = await res.text();
     throw new Error(`Expo push failed (${res.status}): ${text.slice(0, 300)}`);
   }
-  const json = (await res.json()) as { data?: ExpoTicket[] };
-  return json.data ?? [];
+  const json = (await res.json()) as { data?: ExpoTicket[] | ExpoTicket };
+  const raw = json.data;
+  return Array.isArray(raw) ? raw : raw ? [raw] : [];
 }
 
 export async function sendExpoPush(input: {
@@ -47,7 +48,10 @@ export async function sendExpoPush(input: {
   data?: Record<string, string>;
 }) {
   const tokens = [...new Set(input.tokens.filter(isExpoToken))];
-  if (!tokens.length) return { sent: 0, invalid: [] as string[] };
+  if (!tokens.length) {
+    console.warn('Push skipped: no Expo push tokens on admin/technician accounts');
+    return { sent: 0, invalid: [] as string[] };
+  }
 
   const invalid: string[] = [];
   let sent = 0;
@@ -71,6 +75,7 @@ export async function sendExpoPush(input: {
         sent += 1;
         return;
       }
+      console.error('Expo push ticket error', slice[index]?.slice(0, 24), ticket.message || ticket.details);
       if (ticket.details?.error === 'DeviceNotRegistered') {
         invalid.push(slice[index]);
       }
