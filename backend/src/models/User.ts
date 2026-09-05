@@ -20,6 +20,16 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
+const pushTokenSchema = new Schema(
+  {
+    token: { type: String, required: true, trim: true },
+    platform: { type: String, trim: true },
+    type: { type: String, trim: true },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const userSchema = new Schema<IUser>(
   {
     name: { type: String, required: true, trim: true },
@@ -29,18 +39,7 @@ const userSchema = new Schema<IUser>(
     phone: { type: String, required: true, trim: true },
     company: { type: String, trim: true },
     activeJobs: [{ type: Schema.Types.ObjectId, ref: 'MaintenanceJob' }],
-    pushTokens: {
-      type: [
-        {
-          token: { type: String, required: true, trim: true },
-          platform: { type: String, trim: true },
-          type: { type: String, trim: true },
-          updatedAt: { type: Date, default: Date.now },
-          _id: false,
-        },
-      ],
-      default: [],
-    },
+    pushTokens: { type: [pushTokenSchema], default: [] },
   },
   { timestamps: true }
 );
