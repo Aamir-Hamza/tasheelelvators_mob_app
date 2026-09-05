@@ -7,6 +7,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "scheme": "tasheel",
+    "notification": {
+      "icon": "./assets/android-icon-monochrome.png",
+      "color": "#f97316"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "om.tasheel.elevator",
@@ -39,7 +43,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/android-icon-monochrome.png",
           "color": "#f97316",
           "defaultChannel": "default"
         }

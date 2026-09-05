@@ -28,7 +28,13 @@ export async function notifyRoles(
   }));
   const created = await Notification.insertMany(docs);
 
-  const tokens = staff.flatMap((u) => (u.pushTokens || []).map((item) => item.token));
+  const tokens = staff.flatMap((u) => {
+    const list = u.pushTokens || [];
+    const latest = [...list].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )[0];
+    return latest?.token ? [latest.token] : [];
+  });
   try {
     const result = await sendExpoPush({
       tokens,

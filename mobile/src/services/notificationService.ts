@@ -31,10 +31,16 @@ function projectId(): string | undefined {
   );
 }
 
+function isExpoGo() {
+  return Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient';
+}
+
 export async function registerForPushNotificationsAsync(): Promise<DevicePushToken | null> {
   try {
     if (Platform.OS === 'web') return null;
     if (!Device.isDevice) return null;
+    // Expo Go tokens open Expo Go (with its logo). Only the installed Tasheel APK should register.
+    if (isExpoGo()) return null;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {

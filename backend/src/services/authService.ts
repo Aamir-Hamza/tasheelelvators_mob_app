@@ -77,20 +77,14 @@ export async function savePushToken(
   const user = await User.findById(userId);
   if (!user) throw new AppError('User not found', 404);
 
-  const existing = user.pushTokens?.find((item) => item.token === token);
-  if (existing) {
-    existing.platform = input.platform || existing.platform;
-    existing.type = input.type || existing.type;
-    existing.updatedAt = new Date();
-  } else {
-    user.pushTokens = user.pushTokens || [];
-    user.pushTokens.push({
+  user.pushTokens = [
+    {
       token,
       platform: input.platform,
       type: input.type,
       updatedAt: new Date(),
-    });
-  }
+    },
+  ];
   await user.save();
   return { saved: true };
 }
