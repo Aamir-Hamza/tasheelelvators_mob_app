@@ -173,7 +173,7 @@ export function LoginScreen() {
           keyboardType="url"
           value={apiUrl}
           onChangeText={setApiUrl}
-          placeholder="http://192.168.100.128:4000"
+          placeholder="https://tasheelelvators-mob-app.onrender.com"
           placeholderTextColor={theme.muted}
           style={[styles.input, { color: theme.text, borderColor: theme.border, backgroundColor: theme.card }]}
         />

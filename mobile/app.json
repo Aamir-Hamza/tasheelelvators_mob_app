@@ -55,6 +55,7 @@
     ],
     "extra": {
       "supportsRTL": true,
+      "apiUrl": "https://tasheelelvators-mob-app.onrender.com",
       "eas": {
         "projectId": "e1ff9336-be26-462d-80e2-892bbcddde62"
       }
