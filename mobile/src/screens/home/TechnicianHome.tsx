@@ -14,6 +14,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { RootStackParamList } from '../../navigation/types';
 import { liftRef } from '../../utils/format';
+import { FaultPhoto } from '../../components/FaultPhoto';
 
 export function TechnicianHome() {
   const { user } = useAuth();
@@ -121,6 +122,8 @@ export function TechnicianHome() {
             <Text style={{ color: theme.muted }}>
               {liftRef(f.elevatorId).liftId} · {f.faultType}
             </Text>
+            <Text style={{ color: theme.text, marginTop: 4 }}>{f.description}</Text>
+            <FaultPhoto uri={f.mediaUrl} />
             {f.status === 'Open' ? (
               <Pressable
                 onPress={() => acceptFault.mutate(f._id)}

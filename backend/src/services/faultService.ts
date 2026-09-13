@@ -5,6 +5,7 @@ import { AppError } from '../utils/AppError';
 import { nextPrefixedId } from '../utils/ids';
 import { IUser } from '../models/User';
 import { notifyRoles } from './notificationService';
+import { uploadFaultImage } from './mediaService';
 
 const populate = [
   { path: 'elevatorId', select: 'liftId customerName building location status' },
@@ -56,13 +57,19 @@ export async function createFault(
   }
 
   const ids = (await FaultTicket.find().select('ticketId')).map((t) => t.ticketId);
+  let mediaUrl = input.mediaUrl;
+  try {
+    mediaUrl = await uploadFaultImage(input.mediaUrl);
+  } catch (err) {
+    console.error('Fault photo upload failed', err);
+  }
   const ticket = await FaultTicket.create({
     ticketId: nextPrefixedId('FT-', ids, 4),
     elevatorId: elevator._id,
     faultType: input.faultType,
     priority: input.priority || 'Normal',
     description: input.description,
-    mediaUrl: input.mediaUrl,
+    mediaUrl,
     reportedBy: user._id,
     status: 'Open',
   });

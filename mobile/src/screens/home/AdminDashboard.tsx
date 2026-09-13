@@ -18,6 +18,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { RootStackParamList } from '../../navigation/types';
 import { liftRef } from '../../utils/format';
+import { FaultPhoto } from '../../components/FaultPhoto';
 
 export function AdminDashboard() {
   const { t } = useI18n();
@@ -91,9 +92,12 @@ export function AdminDashboard() {
             <Text style={{ color: theme.muted }}>{t('noData')}</Text>
           ) : (
             criticalFaults.slice(0, 3).map((f) => (
-              <Text key={f._id} style={{ color: theme.alert, fontWeight: '700', marginBottom: 6 }}>
-                {f.ticketId} · {liftRef(f.elevatorId).liftId} · {f.faultType}
-              </Text>
+              <View key={f._id} style={{ marginBottom: 8 }}>
+                <Text style={{ color: theme.alert, fontWeight: '700' }}>
+                  {f.ticketId} · {liftRef(f.elevatorId).liftId} · {f.faultType}
+                </Text>
+                <FaultPhoto uri={f.mediaUrl} />
+              </View>
             ))
           )}
         </View>

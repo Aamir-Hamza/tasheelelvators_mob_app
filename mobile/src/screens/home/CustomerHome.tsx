@@ -16,6 +16,7 @@ import { useI18n } from '../../context/I18nContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { useToast } from '../../context/ToastContext';
 import { liftRef, matchesElevatorSearch } from '../../utils/format';
+import { FaultPhoto } from '../../components/FaultPhoto';
 
 export function CustomerHome() {
   const { user } = useAuth();
@@ -178,6 +179,7 @@ export function CustomerHome() {
             <Text style={{ color: theme.muted }}>
               {f.faultType} · {f.status}
             </Text>
+            <FaultPhoto uri={f.mediaUrl} />
           </View>
         ))
       )}

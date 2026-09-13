@@ -13,6 +13,7 @@ import { useI18n } from '../context/I18nContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { formatWhen, liftRef, techRef } from '../utils/format';
+import { FaultPhoto } from '../components/FaultPhoto';
 
 const PRIORITY_FILTERS = ['All', 'Critical', 'High', 'Normal'] as const;
 const STATUS_CYCLE = ['Open', 'Assigned', 'In-Progress', 'Closed'] as const;
@@ -165,6 +166,7 @@ export function EmergencyScreen() {
             {liftRef(f.elevatorId).liftId} · {f.faultType}
           </Text>
           <Text style={{ color: theme.text, marginTop: 4 }}>{f.description}</Text>
+          <FaultPhoto uri={f.mediaUrl} />
           <Text style={{ color: theme.muted, marginTop: 6, fontSize: 12 }}>
             {statusLabel(f.status)}
             {techRef(f.assignedTechId).name ? ` · ${techRef(f.assignedTechId).name}` : ''}
