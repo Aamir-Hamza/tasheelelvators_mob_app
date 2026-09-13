@@ -8,10 +8,9 @@ export async function uploadFaultImage(mediaUrl?: string): Promise<string | unde
   const preset = env.cloudinaryUploadPreset;
   if (!cloud || !preset) return mediaUrl;
 
-  const body = new FormData();
-  body.append('file', mediaUrl);
-  body.append('upload_preset', preset);
-  body.append('folder', 'tasheel/faults');
+  const body = new URLSearchParams();
+  body.set('file', mediaUrl);
+  body.set('upload_preset', preset);
 
   const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud}/image/upload`, {
     method: 'POST',
@@ -19,8 +18,10 @@ export async function uploadFaultImage(mediaUrl?: string): Promise<string | unde
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Cloudinary upload failed (${res.status}): ${text.slice(0, 200)}`);
+    console.error('Cloudinary upload failed', res.status, text.slice(0, 300));
+    return mediaUrl;
   }
   const json = (await res.json()) as { secure_url?: string };
-  return json.secure_url || mediaUrl;
+  if (!json.secure_url) return mediaUrl;
+  return json.secure_url.replace('/upload/', '/upload/c_limit,w_1400,q_auto,f_auto/');
 }

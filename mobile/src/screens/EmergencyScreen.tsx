@@ -39,6 +39,7 @@ export function EmergencyScreen() {
       const q = priority === 'All' ? '' : `?priority=${priority}`;
       return (await api.get(`/faults${q}`)).data.data as FaultTicket[];
     },
+    refetchInterval: 4000,
   });
   const techs = useQuery({
     queryKey: ['technicians'],
